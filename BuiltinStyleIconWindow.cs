@@ -46,11 +46,61 @@ namespace WuHuan
             public bool isDarkAsset;
         }
 
+        [Serializable]
+        class TreeViewStateTab : TreeViewState
+        {
+            public IconTab iconTab { get { return m_IconTab; } }
+            [SerializeField]
+            private IconTab m_IconTab = IconTab.All;
+
+            [SerializeField]
+            private Vector2 m_ScrollPos1;
+            [SerializeField]
+            private Vector2 m_ScrollPos2;
+
+            public void SetIconTab(IconTab tab)
+            {
+                if (tab == m_IconTab)
+                {
+                    return;
+                }
+
+                switch (m_IconTab)
+                {
+                    case IconTab.Styles:
+                        {
+                            m_ScrollPos1 = scrollPos;
+                        }
+                        break;
+                    case IconTab.Icons:
+                        {
+                            m_ScrollPos2 = scrollPos;
+                        }
+                        break;
+                }
+
+                m_IconTab = tab;
+                switch (m_IconTab)
+                {
+                    case IconTab.Styles:
+                        {
+                            scrollPos = m_ScrollPos1;
+                        }
+                        break;
+                    case IconTab.Icons:
+                        {
+                            scrollPos = m_ScrollPos2;
+                        }
+                        break;
+                }
+            }
+        }
+
         class IconTreeViewItem : TreeViewItem
         {
             public float titleWidth { get; private set; }
-            public Vector2 size { get;private set; }
-            public Vector2 sizeLabel { get;private set; }
+            public Vector2 size { get; private set; }
+            public Vector2 sizeLabel { get; private set; }
             public GUIStyle style { get; set; }
             public Texture2D texture { get; set; }
             public bool isToggle { get; set; }
@@ -86,7 +136,6 @@ namespace WuHuan
                     for (var i = 0; i < m_Models.Count; i++)
                     {
                         var item = m_Models[i];
-                        item.id = i;
                         root.AddChild(item);
                     }
                 }
@@ -173,17 +222,14 @@ namespace WuHuan
             public void SetModels(List<IconTreeViewItem> models)
             {
                 m_Models = models;
-                state.scrollPos = Vector2.zero;
-                state.selectedIDs = new List<int>();
                 Reload();
             }
         }
 
         [SerializeField]
-        private TreeViewState m_TreeViewState;
+        private TreeViewStateTab m_TreeViewState;
         private IconTreeView m_TreeView;
         private SearchField m_SearchField;
-        private IconTab m_IconTab;
         private List<IconTreeViewItem> m_IconStyles;
         private List<IconTreeViewItem> m_IconIcons;
 
@@ -198,13 +244,13 @@ namespace WuHuan
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             EditorGUI.BeginChangeCheck();
-            GUILayout.Toggle(m_IconTab == IconTab.Styles, Styles.styleContent, EditorStyles.toolbarButton, GUILayout.Width(100));
+            GUILayout.Toggle(m_TreeViewState.iconTab == IconTab.Styles, Styles.styleContent, EditorStyles.toolbarButton, GUILayout.Width(100));
             if (EditorGUI.EndChangeCheck())
             {
                 SetStylesTab();
             }
             EditorGUI.BeginChangeCheck();
-            GUILayout.Toggle(m_IconTab == IconTab.Icons, Styles.iconContent, EditorStyles.toolbarButton, GUILayout.Width(100));
+            GUILayout.Toggle(m_TreeViewState.iconTab == IconTab.Icons, Styles.iconContent, EditorStyles.toolbarButton, GUILayout.Width(100));
             if (EditorGUI.EndChangeCheck())
             {
                 SetIconsTab();
@@ -232,10 +278,17 @@ namespace WuHuan
                 return;
             }
 
-            m_TreeViewState = m_TreeViewState ?? new TreeViewState();
+            m_TreeViewState = m_TreeViewState ?? new TreeViewStateTab();
             m_TreeView = new IconTreeView(m_TreeViewState);
             m_SearchField = new SearchField();
-            SetStylesTab();
+            if (m_TreeViewState.iconTab == IconTab.Icons)
+            {
+                SetIconsTab();
+            }
+            else
+            {
+                SetStylesTab();
+            }
         }
 
         private void SetStylesTab()
@@ -245,6 +298,7 @@ namespace WuHuan
                 m_IconStyles = new List<IconTreeViewItem>();
                 GUIContent tempContent = new GUIContent();
 
+                int id = 1;
                 foreach (GUIStyle style in GUI.skin)
                 {
                     tempContent.text = "";
@@ -256,12 +310,13 @@ namespace WuHuan
                     m_IconStyles.Add(new IconTreeViewItem(style.name, 250f, size, sizeLabel)
                     {
                         style = style,
-                        isToggle = isToggle
+                        isToggle = isToggle,
+                        id = id++
                     });
                 }
             }
 
-            m_IconTab = IconTab.Styles;
+            m_TreeViewState.SetIconTab(IconTab.Styles);
             m_TreeView.SetModels(m_IconStyles);
         }
 
@@ -309,6 +364,7 @@ namespace WuHuan
                     }
                 }
 
+                int id = 10000001;
                 bool isProSkin = EditorGUIUtility.isProSkin;
                 foreach (var assetName in assetNames)
                 {
@@ -327,7 +383,8 @@ namespace WuHuan
 
                                 m_IconIcons.Add(new IconTreeViewItem(tempContent.text, titleWidth, size, Vector2.zero)
                                 {
-                                    texture = tex
+                                    texture = tex,
+                                    id = id++
                                 });
                             }
                         }
@@ -335,7 +392,7 @@ namespace WuHuan
                 }
             }
 
-            m_IconTab = IconTab.Icons;
+            m_TreeViewState.SetIconTab(IconTab.Icons);
             m_TreeView.SetModels(m_IconIcons);
         }
 
